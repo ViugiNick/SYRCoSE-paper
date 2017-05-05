@@ -54,16 +54,18 @@
 \maketitle
 
 \begin{abstract}
-  Elegant syntax of Ruby language pays back when it comes to finding bugs in large codebases. Static analysis is
-  hindered\cite{ruby_type_checker} by specific capabilities of Ruby, such as defining methods dynamically and evaluating string expressions. 
-  Even in dynamically typed languages, type information is very useful, because of better type safety and more reliable checks.
-  One may annotate the code with YARD (Ruby documentation tool) which also enables improved tooling such as code completion.
+Elegant syntax of Ruby language pays back when it comes to finding bugs in large codebases. Static analysis is
+  hindered\cite{ruby_type_checker} by specific capabilities of Ruby, such as defining methods dynamically and evaluating
+  string expressions.  Even in dynamically typed languages, type information is very useful, because of better type
+  safety and more reliable checks.  One may annotate the code with YARD (Ruby documentation tool) which also enables
+  improved tooling such as code completion.
 
+This paper reports a new approach to type annotations generation. We trace direct method calls while the program is
+  running,evaluate types of input and output variables and use this information to derive implicit type annotations.
 
-
-This paper reports a new approach to type annotations generation. We trace direct method calls while the program is running,evaluate types of input and output variables and use this information to derive implicit type annotations.
-
-Each method or function is associated with a finite-state automaton, to which all variants of typed signatures are added. Then an effective compression technique is applied to the automaton, which reduces the cost of storage and allows to display the collected information in a human-readable form.
+Each method or function is associated with a finite-state automaton, to which all variants of typed signatures are
+  added. Then an effective compression technique is applied to the automaton, which reduces the cost of storage and
+  allows to display the collected information in a human-readable form.
  
 \end{abstract}
 
@@ -75,7 +77,9 @@ Ruby, Dynamically typed languages, Ruby VM, YARV, Method signature, Type inferen
 \section{Introduction}
 Developers suffer from time-consuming investigations with a goal to understand why the particular piece of code does not
 work as expected. The dynamic nature of Ruby allows for great possibilities which has a drawback — the codebase as a
-whole becomes entangled and investigations become more difficult compared to some other languages like Java or C++. For example in Ruby dynamic methods typically defined using \texttt{define\_method}. “Dynamic methods” is methods with names or bodies that are calculated at runtime, then defined\cite{gradual_type}.
+whole becomes entangled and investigations become more difficult compared to some other languages like Java or C++. For
+example in Ruby dynamic methods typically defined using \texttt{define\_method}. “Dynamic methods” is methods with names
+or bodies that are calculated at runtime, then defined\cite{gradual_type}.
 \begin{lstlisting}[
 basicstyle=\fontsize{8}{10}\ttfamily,
 ]
@@ -102,24 +106,34 @@ As RDoc/YARD annotations may help, they have several drawbacks, too:
 \begin{itemize}  
 \item the type system used for documenting attributes, parameters and return values is pretty decent however it is not
   clear how to connect some types with each other. For example, \texttt{def []=} for array usually returns the same type
-  as the second arg taking any type so in YARD this will look like \texttt{@param value [Object]}, \texttt{@return
-  [Object]} which is not really helpful.
-\item from some perspective, such documentation itself a kind of contradicts the purpose of Ruby — to be as natural
-  and expressive as possible. 
+    as the second arg taking any type so in YARD this will look like \texttt{@param value [Object]}, \texttt{@return
+    [Object]} which is not really helpful.
+\item from some perspective, such documentation itself a kind of contradicts the purpose of Ruby — to be as natural and
+  expressive as possible. 
 \end{itemize}
 
 We tackle the problem like some people do manually: run or debug the programs to get valuable info about the code
-they're interested. The proposed approach suggests that collecting direct input and output types of the method dispatches, post-processing and structuring of this data will make up implicit type annotations. As we automate this process, we can retrieve a plenty of information from all code covered by our runs.
+they're interested. The proposed approach suggests that collecting direct input and output types of the method
+dispatches, post-processing and structuring of this data will make up implicit type annotations. As we automate this
+process, we can retrieve a plenty of information from all code covered by our runs.
 
 The collected information not only might be used for YARD annotations generation but also could be stored in a database
-to share collected information between different users in order to maximize the coverage of the functionality of the analyzed code. Moreover, generated implicit annotations can be built into the code insight(analysis system of the IDE\cite{Control_flow_analysis_in_scheme}), it provide additional "static" checks and code completion suggestions.
+to share collected information between different users in order to maximize the coverage of the functionality of the
+analyzed code. Moreover, generated implicit annotations can be built into the code insight(analysis system of the
+IDE\cite{Control_flow_analysis_in_scheme}), it provide additional "static" checks and code completion suggestions.
 
-    The project implementation can be divided into two main parts:
-    \begin{itemize}  
-    \item First stage is collecting information about called methods and their input and output types during the script running time. It is very important to collect the necessary information as quickly as possible not to force users wait for script completion many times longer then in case of regular execution. So instead of the standard API, provided by language, had to implement a native extension, which receives all the necessary information directly from the internal stack of the virtual machine.
+The project implementation can be divided into two main parts:
+\begin{itemize}  
+  \item First stage is collecting information about called methods and their input and output types during the script
+    running time. It is very important to collect the necessary information as quickly as possible not to force users
+    wait for script completion many times longer then in case of regular execution. So instead of the standard API,
+    provided by language, had to implement a native extension, which receives all the necessary information directly
+    from the internal stack of the virtual machine.
 
-    \item At the second stage, the data obtained in the first stage will be structured, reduced to a finite-state automaton and prepared for further use in code insight. This storage scheme was chosen because of the ability to quickly obtain a regular expression that is easily perceived by a human.
-    \end{itemize}
+  \item At the second stage, the data obtained in the first stage will be structured, reduced to a finite-state
+    automaton and prepared for further use in code insight. This storage scheme was chosen because of the ability to
+    quickly obtain a regular expression that is easily perceived by a human.
+\end{itemize}
 
 \section{Collecting information about method calls}
 Method parameters in Ruby have the following structure:
@@ -136,9 +150,8 @@ def m(a1, a2, ..., aM,          # mandatory(req)
 \end{lstlisting}
 
 
-TracePoint is a API allowing to hook several Ruby VM events like method calls and returns and get
-any data through Binding, which encapsulates the execution context(variables, methods) and retain this context for
-future use.
+TracePoint is a API allowing to hook several Ruby VM events like method calls and returns and get any data through
+Binding, which encapsulates the execution context(variables, methods) and retain this context for future use.
 \begin{lstlisting}[
 basicstyle=\fontsize{8}{10}\ttfamily,
 ]
@@ -171,14 +184,19 @@ a->2, b->"1"
 
 The big disadvantage of this approach is that calculation of full execution context is a time-consuming operation. But
 later we will need information only about a small part of it. Namely: types of arguments, types and names of method
-parameters. Creating a native extension for the Ruby VM\cite{Ruby_Under_a_Microscope}, which will receive information about the method name directly from YARV instruction list (Figure 1) and receive information about argument types directly from the internal stack. 
+parameters. Creating a native extension for the Ruby VM\cite{Ruby_Under_a_Microscope}, which will receive information
+about the method name directly from YARV instruction list (Figure 1) and receive information about argument types
+directly from the internal stack. 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.5\textwidth]{img1}
     \caption{YARV’s internal registers.}
 \end{figure}
-Code analysis often handles direct method calls, so it is important to separate which arguments were directly passed to the method by the user, and which ones were assigned the default values. When Ruby VM hook the call event, all not specified optional arguments already
-initialized with default values. So we need to build one more native extension and gem this information from internal stack. Lets take a look at simple Ruby method with optional parameter and on appropriate bytecode.
+Code analysis often handles direct method calls, so it is important to separate which arguments were directly passed to
+the method by the user, and which ones were assigned the default values. When Ruby VM hook the call event, all not
+specified optional arguments already initialized with default values. So we need to build one more native extension and
+gem this information from internal stack. Lets take a look at simple Ruby method with optional parameter and on
+appropriate bytecode.
 
 \begin{lstlisting}
 def foo(a, b=42, kw1: 1, kw2:, kw3: 3)
@@ -213,16 +231,24 @@ basicstyle=\fontsize{8}{10}\ttfamily,
 0009 leave    
 \end{lstlisting}
 So we need to find bytecode instruction for current method dispatch. For this, it is necessary to find caller control
-frame, and get last executed instruction in this frame. Thats how we get number of arguments(argc:) and list of key words(kw:[])
+frame, and get last executed instruction in this frame. Thats how we get number of arguments(argc:) and list of key
+words(kw:[])
 \section{Transforming raw call data into contracts}
-Huge amount of raw signatures received from the Ruby process must be structured and processed so that it can be easily used and perceived. Each traced method is associated with a finite-state automaton. This storage structure allows you to quickly add raw data obtained from the Ruby process. It is also can easily be reduced to a human-readable regular expression. 
+Huge amount of raw signatures received from the Ruby process must be structured and processed so that it can be easily
+used and perceived. Each traced method is associated with a finite-state automaton. This storage structure allows you to
+quickly add raw data obtained from the Ruby process. It is also can easily be reduced to a human-readable regular
+expression. 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.42\textwidth]{img2}
     \caption{Example of generating a non-minimized automaton.}
 \end{figure}
 \newpage
-In each automatron there is a single starting vertex and a single terminal vertex. To the automaton consistently added words obtained by concatenating signatures and corresponding output types. Then the minimization algorithm\cite{dfa_minimisation} is applied to this automaton. Quite often there are situations when the types of the two or more arguments of the method always coincide. Or even the type of the result coincides with type of one of the arguments. Consider an algorithm of processing such methods using method \texttt{equals} as an example.
+In each automatron there is a single starting vertex and a single terminal vertex. To the automaton consistently added
+words obtained by concatenating signatures and corresponding output types. Then the minimization
+algorithm\cite{dfa_minimisation} is applied to this automaton. Quite often there are situations when the types of the
+two or more arguments of the method always coincide. Or even the type of the result coincides with type of one of the
+arguments. Consider an algorithm of processing such methods using method \texttt{equals} as an example.
 \begin{lstlisting}[
 basicstyle=\fontsize{8}{10}\ttfamily,
 ]
@@ -239,7 +265,11 @@ p equals(1, 2) # (Integer, Integer) -> FalseClass
     \includegraphics[width=0.4\textwidth]{img4}
     \caption{Automatron with counted bit masks.}
 \end{figure}
-In this case, the types of arguments are the same, so the automaton can be markedly reduced. The algorithm consists in storing a bit mask on each automatron transition. Bit with one indicates a match of the type written on the edge with the corresponding previous type (Fig 3). In case the mask is greater than 0, the type written on the edge can be replaced with a mask. Subsequently, the transition along the edge will be carried out only when a readable signature is applied to the mask. After that, minimization algorithm is applied to the automaton one more time.
+In this case, the types of arguments are the same, so the automaton can be markedly reduced. The algorithm consists in
+storing a bit mask on each automatron transition. Bit with one indicates a match of the type written on the edge with
+the corresponding previous type (Fig 3). In case the mask is greater than 0, the type written on the edge can be
+replaced with a mask. Subsequently, the transition along the edge will be carried out only when a readable signature is
+applied to the mask. After that, minimization algorithm is applied to the automaton one more time.
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.5\textwidth]{img5}
@@ -247,9 +277,13 @@ In this case, the types of arguments are the same, so the automaton can be marke
 \end{figure}
 \\
 \\
-When during the code analysis it will be necessary to calculate the type returned by the method, we simply read through the automaton the set of input types of this method, and all the transitions from the vertex in which we turn out to be the desired output types.
+When during the code analysis it will be necessary to calculate the type returned by the method, we simply read through
+the automaton the set of input types of this method, and all the transitions from the vertex in which we turn out to be
+the desired output types.
 \section{Conclusion}
-The paper describes the approach to generation of implicit type annotations. At the moment, we are working on optimizing the time of collecting of statistics. In the future, it will be necessary to test the approach, carry out load testing and implement the prototype in the existing static analysis of the Ruby language.
+The paper describes the approach to generation of implicit type annotations. At the moment, we are working on optimizing
+the time of collecting of statistics. In the future, it will be necessary to test the approach, carry out load testing
+and implement the prototype in the existing static analysis of the Ruby language.
 
 \bibliographystyle{unsrt}
 \bibliography{sample.bib}
