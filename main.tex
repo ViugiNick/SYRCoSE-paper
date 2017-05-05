@@ -103,39 +103,41 @@ basicstyle=\fontsize{8}{10}\ttfamily,
     states :active, :inactive, :pending
   end
 \end{lstlisting}
-As RDoc/YARD annotations may help, they have several drawbacks, too:
 
+One of the possible workarounds is using code documentation tools like RDoc or YARD. % todo cite
+As \texttt{@param} and \texttt{@return} annotations may help, they have several drawbacks, too:
 
 \begin{itemize}  
 \item the type system used for documenting attributes, parameters and return values is pretty decent however it is not
-  clear how to connect some types with each other. For example, \texttt{def []=} for array usually returns the same type
-    as the second arg taking any type so in YARD this will look like \texttt{@param value [Object]}, \texttt{@return
-    [Object]} which is not really helpful.
-\item from some perspective, such documentation itself a kind of contradicts the purpose of Ruby — to be as natural and
-  expressive as possible. 
+  clear how to connect the types with each other. For example, \texttt{def []=} for array usually returns the same type
+    as the second arg taking any type so in YARD this will look like \texttt{@param~value~[Object]},
+    \texttt{@return~[Object]} which is not really helpful.
+\item from some perspective, such documentation itself a kind of contradicts the purpose of Ruby — to be as short,
+  natural and expressive as possible. 
 \end{itemize}
 
-We tackle the problem like some people do manually: run or debug the programs to get valuable info about the code
-they're interested. The proposed approach suggests that collecting direct input and output types of the method
-dispatches, post-processing and structuring of this data will make up implicit type annotations. As we automate this
-process, we can retrieve a plenty of information from all code covered by our runs.
+The proposed approach is inspired by the way people tackle this problem manually: one may run or debug the program to
+inspect some valuable info about the code they're interested in. This suggests that collecting direct input and output
+types of the method dispatches during the program execution, post-processing and structuring of this data will make up
+implicit type annotations. As the process is automated, one can retrieve a plenty of information about the covered code.
 
-The collected information not only might be used for YARD annotations generation but also could be stored in a database
-to share collected information between different users in order to maximize the coverage of the functionality of the
-analyzed code. Moreover, generated implicit annotations can be built into the code insight(analysis system of the
-IDE\cite{Control_flow_analysis_in_scheme}), it provide additional "static" checks and code completion suggestions.
+The collected information not only might be used for YARD annotations generation but also could be stored in a public
+database to be shared and reused by different users in order to maximize the coverage of the analyzed code and the
+quality of the results. Moreover, generated implicit annotations can be built into the static analysis
+tools\cite{Control_flow_analysis_in_scheme}) to improve existing and provide additional checks and code completion
+suggestions.
 
 The project implementation can be divided into two main parts:
 \begin{itemize}  
-  \item First stage is collecting information about called methods and their input and output types during the script
-    running time. It is very important to collect the necessary information as quickly as possible not to force users
-    wait for script completion many times longer then in case of regular execution. So instead of the standard API,
-    provided by language, had to implement a native extension, which receives all the necessary information directly
-    from the internal stack of the virtual machine.
+  \item At the first stage, the information about called methods and their input and output types is being collected
+    thoughout the script execution. It is very important to collect the necessary information as quickly as possible not
+    to force users to wait for script completion many times longer compared to the case of the regular execution. To
+    achieve this we implement a native extension, which receives all the necessary information directly from the
+    internal stack of the virtual machine instead of using the standard API provided by language.
 
-  \item At the second stage, the data obtained in the first stage will be structured, reduced to a finite-state
-    automaton and prepared for further use in code insight. This storage scheme was chosen because of the ability to
-    quickly obtain a regular expression that is easily perceived by a human.
+  \item At the second stage, the data obtained in the first stage is structured, reduced to a finite-state automaton and
+    prepared for further use in code insight. This storage scheme was chosen because of the ability to quickly obtain a
+    regular expression that is easily perceived by a human.
 \end{itemize}
 
 \section{Collecting information about method calls}
