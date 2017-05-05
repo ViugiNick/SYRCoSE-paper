@@ -79,8 +79,10 @@ Developers suffer from time-consuming investigations with a goal to understand w
 work as expected. The dynamic nature of Ruby allows for great possibilities which has a drawback — the codebase as a
 whole becomes entangled and investigations become more difficult compared to the statically typed languages like Java or
 C++. Another downside of its dynamic features is a drastic static analysis performance reduction due to inability to
-resolve some symbols reliably. For example, in Ruby dynamic methods typically defined using \texttt{define\_method}.
-“Dynamic methods” is methods with names or bodies that are calculated at runtime, then defined\cite{gradual_type}.
+resolve some symbols reliably. 
+
+Consider the dynamic method creation which is often done with \texttt{define\_method} call.  Names and bodies of
+dynamically created methods may be calculated at runtime\cite{gradual_type}.
 \begin{lstlisting}[
 basicstyle=\fontsize{8}{10}\ttfamily,
 ]
