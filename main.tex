@@ -61,7 +61,7 @@ Elegant syntax of Ruby language pays back when it comes to finding bugs in large
   improved tooling such as code completion.
 
 This paper reports a new approach to type annotations generation. We trace direct method calls while the program is
-  running,evaluate types of input and output variables and use this information to derive implicit type annotations.
+  running, evaluate types of input and output variables and use this information to derive implicit type annotations.
 
 Each method or function is associated with a finite-state automaton, to which all variants of typed signatures are
   added. Then an effective compression technique is applied to the automaton, which reduces the cost of storage and
@@ -186,7 +186,6 @@ a->2, b->1
 return
 a->2, b->"1"
 \end{lstlisting}
-
 The big disadvantage of this approach is that calculation of full execution context is a time-consuming operation. But
 later we will need information only about a small part of it. Namely: types of arguments, types and names of method
 parameters. Creating a native extension for the Ruby VM\cite{Ruby_Under_a_Microscope}, which will receive information
@@ -202,6 +201,7 @@ the method by the user, and which ones were assigned the default values. When Ru
 specified optional arguments already initialized with default values. So we need to build one more native extension and
 gem this information from internal stack. Lets take a look at simple Ruby method with optional parameter and on
 appropriate bytecode.
+\newpage
 
 \begin{lstlisting}
 def foo(a, b=42, kw1: 1, kw2:, kw3: 3)
@@ -249,7 +249,7 @@ expression.
     \caption{Example of generating a non-minimized automaton.}
 \end{figure}
 \newpage
-In each automatron there is a single starting vertex and a single terminal vertex. To the automaton consistently added
+In each automaton there is a single starting vertex and a single terminal vertex. To the automaton consistently added
 words obtained by concatenating signatures and corresponding output types. Then the minimization
 algorithm\cite{dfa_minimisation} is applied to this automaton. Quite often there are situations when the types of the
 two or more arguments of the method always coincide. Or even the type of the result coincides with type of one of the
@@ -268,17 +268,17 @@ p equals(1, 2) # (Integer, Integer) -> FalseClass
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.4\textwidth]{img4}
-    \caption{Automatron with counted bit masks.}
+    \caption{Automaton with counted bit masks.}
 \end{figure}
 In this case, the types of arguments are the same, so the automaton can be markedly reduced. The algorithm consists in
-storing a bit mask on each automatron transition. Bit with one indicates a match of the type written on the edge with
+storing a bit mask on each automaton transition. Bit with one indicates a match of the type written on the edge with
 the corresponding previous type (Fig 3). In case the mask is greater than 0, the type written on the edge can be
 replaced with a mask. Subsequently, the transition along the edge will be carried out only when a readable signature is
 applied to the mask. After that, minimization algorithm is applied to the automaton one more time.
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.5\textwidth]{img5}
-    \caption{Minimizing the automatron with reference edges.}
+    \caption{Minimizing the automaton with reference edges.}
 \end{figure}
 \\
 \\
@@ -286,7 +286,9 @@ When during the code analysis it will be necessary to calculate the type returne
 the automaton the set of input types of this method, and all the transitions from the vertex in which we turn out to be
 the desired output types.
 \section{Conclusion}
-The paper describes the approach to generation of implicit type annotations. At the moment, we are working on optimizing
+The paper describes the approach to generation of implicit type annotations.
+\par This approach provides information about the types of methods that can not be obtained by static analysis of the source code in case if it is possible to understand in which library the method was declared and resolve the method receiver. This approach is useful for methods that are declared dynamically or in their body there are complex syntactic constructions, for example evaluating a string variable.
+\par At the moment, we are working on optimizing
 the time of collecting of statistics. In the future, it will be necessary to test the approach, carry out load testing
 and implement the prototype in the existing static analysis of the Ruby language.
 
